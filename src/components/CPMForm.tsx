@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button"; // Importujemy przycisk
+import { Switch } from "@/components/ui/switch";
 
 interface Activity {
   id: number;
@@ -19,6 +20,7 @@ const CPMForm: React.FC = () => {
     Map<number, boolean>
   >(new Map()); // Map do przechowywania błędów dla każdego wiersza
   const [formError, setFormError] = useState<string>(""); // Przechowuje komunikat o błędach w formularzu
+  const [isAoN, setIsAoN] = useState<boolean>(true);
 
   // Funkcja walidująca, czy nazwa czynności jest unikalna
   const isNameDuplicate = (name: string, id: number) => {
@@ -119,13 +121,7 @@ const CPMForm: React.FC = () => {
   // Funkcja generująca dane
   const handleGenerate = () => {
     const activitiesWithoutLastRow = activities.slice(0, activities.length - 1);
-    console.log("Generowanie na podstawie danych:", activitiesWithoutLastRow);
-    // Tutaj możesz dodać logikę generowania na podstawie danych
-    //
-    //
-    //
-    //
-    // Obsługa generowania danych
+    console.log("Generowanie wykresu:", { activities: activitiesWithoutLastRow, isAoN });
   };
 
   useEffect(() => {
@@ -151,6 +147,11 @@ const CPMForm: React.FC = () => {
       <h2 className="mb-4 text-center text-xl font-bold">
         CPM - Wprowadź czynności
       </h2>
+      <div className="flex justify-center items-center mb-4">
+        <span>{isAoN ? "AoN" : "AoA"}</span>
+        <Switch checked={isAoN} onCheckedChange={setIsAoN} className="mx-2" />
+      </div>
+
       <Card>
         <CardContent className="space-y-2 p-4">
           {activities.map((activity) => (
