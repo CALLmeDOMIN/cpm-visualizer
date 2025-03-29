@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button"; // Importujemy przycisk
+import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 
 interface Activity {
@@ -12,94 +12,103 @@ interface Activity {
 }
 
 const CPMForm: React.FC = () => {
-  const [activities, setActivities] = useState<Activity[]>([
+  const [activitiesAoN, setActivitiesAoN] = useState<Activity[]>([
     { id: 1, name: "", duration: 0, dependency: "" },
   ]);
-  const [isFormValid, setIsFormValid] = useState(false); // Stan do sprawdzania poprawności formularza
-  const [dependencyErrors, setDependencyErrors] = useState<
-    Map<number, boolean>
-  >(new Map()); // Map do przechowywania błędów dla każdego wiersza
-  const [formError, setFormError] = useState<string>(""); // Przechowuje komunikat o błędach w formularzu
+  const [activitiesAoA, setActivitiesAoA] = useState<Activity[]>([
+    { id: 1, name: "", duration: 0, dependency: "" },
+  ]);
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [dependencyErrors, setDependencyErrors] = useState<Map<number, boolean>>(new Map());
+  const [formError, setFormError] = useState<string>("");
   const [isAoN, setIsAoN] = useState<boolean>(true);
 
-  // Funkcja walidująca, czy nazwa czynności jest unikalna
+  const currentActivities = isAoN ? activitiesAoN : activitiesAoA;
+  const setCurrentActivities = isAoN ? setActivitiesAoN : setActivitiesAoA;
+
   const isNameDuplicate = (name: string, id: number) => {
-    return activities.some(
+    return currentActivities.some(
       (activity) => activity.name === name && activity.id !== id,
     );
   };
 
-  // Funkcja do sprawdzania, czy dane zależności są unikalne w całym formularzu
   const isDependencyDuplicate = (dependency: string, id: number) => {
-    return activities.some(
-      (activity) => activity.dependency === dependency && activity.id !== id,
-    );
+    return isAoN 
+      ? currentActivities.some(
+          (activity) => activity.dependency === dependency && activity.id !== id
+        )
+      : false; // W AoA dopuszczamy powtarzające się zależności
   };
 
-  // Funkcja do zmiany wartości w danym wierszu
   const handleChange = (
     id: number,
     field: keyof Activity,
     value: string | number,
   ) => {
-    setActivities((prev) =>
+    setCurrentActivities((prev) =>
       prev.map((activity) =>
         activity.id === id ? { ...activity, [field]: value } : activity,
       ),
     );
   };
 
-  // Funkcja do walidacji formatu "Następstwo zdarzeń" (np. 1-2)
-  const isValidDependency = (value: string): boolean => {
-    const regex = /^([0-9]+)-([0-9]+)$/;
-    const match = value.match(regex);
-
-    if (match) {
-      const firstNum = parseInt(match[1], 10);
-      const secondNum = parseInt(match[2], 10);
-      return secondNum > firstNum; // Sprawdzamy, czy druga liczba jest większa od pierwszej
+  const isValidDependency = (value: string, isAoN: boolean): boolean => {
+    if (isAoN) {
+      const regex = /^([0-9]+)-([0-9]+)$/;
+      const match = value.match(regex);
+      if (match) {
+        const firstNum = parseInt(match[1], 10);
+        const secondNum = parseInt(match[2], 10);
+        return secondNum > firstNum;
+      }
+      return false;
+    } else {
+      // Dla AoA sprawdzamy tylko czy nie jest pusty i czy jest liczbą
+      return value.trim() !== "" && !isNaN(Number(value));
     }
-    return false;
   };
 
-  // Funkcja do obsługi zmiany wartości w polu "Następstwo"
   const handleDependencyChange = (id: number, value: string) => {
-    const isValid = isValidDependency(value);
+    const isValid = isValidDependency(value, isAoN);
     setDependencyErrors((prev) => new Map(prev).set(id, !isValid));
     if (!isDependencyDuplicate(value, id)) {
       handleChange(id, "dependency", value);
     }
   };
 
-  // Funkcja sprawdzająca, czy wiersz jest pełny i poprawny
   const isRowValid = (activity: Activity): boolean => {
-    return (
-      activity.name.trim() !== "" &&
-      activity.duration > 0 &&
-      activity.dependency.trim() !== "" &&
-      isValidDependency(activity.dependency) &&
-      !isDependencyDuplicate(activity.dependency, activity.id)
-    );
+    if (isAoN) {
+      return (
+        activity.name.trim() !== "" &&
+        activity.duration > 0 &&
+        activity.dependency.trim() !== "" &&
+        isValidDependency(activity.dependency, true) &&
+        !isDependencyDuplicate(activity.dependency, activity.id)
+      );
+    } else {
+      return (
+        activity.name.trim() !== "" &&
+        activity.duration > 0 &&
+        activity.dependency.trim() !== "" &&
+        isValidDependency(activity.dependency, false)
+      );
+    }
   };
 
-  // Funkcja do dodawania nowego wiersza
   const addRowIfNeeded = () => {
-    const lastActivity = activities[activities.length - 1];
-    // Dodanie nowego wiersza tylko jeśli ostatni wiersz jest pełny i poprawny
+    const lastActivity = currentActivities[currentActivities.length - 1];
     if (isRowValid(lastActivity)) {
-      setActivities((prev) => [
+      setCurrentActivities((prev) => [
         ...prev,
         { id: prev.length + 1, name: "", duration: 0, dependency: "" },
       ]);
     }
   };
 
-  // Funkcja do usuwania pustych wierszy
   const removeRowIfEmpty = () => {
-    setActivities((prev) =>
+    setCurrentActivities((prev) =>
       prev.filter(
         (activity, index) =>
-          // Pierwszy wiersz nie może być usunięty
           index === 0 ||
           activity.name.trim() !== "" ||
           activity.duration > 0 ||
@@ -108,39 +117,33 @@ const CPMForm: React.FC = () => {
     );
   };
 
-  // Funkcja sprawdzająca, czy formularz jest gotowy do generowania
   const isFormReady = () => {
-    // Ignorujemy ostatni wiersz w walidacji
-    const activitiesWithoutLastRow = activities.slice(0, activities.length - 1);
+    const activitiesWithoutLastRow = currentActivities.slice(0, currentActivities.length - 1);
     const isValidExceptLastRow = activitiesWithoutLastRow.every(isRowValid);
 
-    // Przycisk 'Generuj' jest widoczny, jeśli wszystkie wiersze poza ostatnim są poprawne
-    return isValidExceptLastRow && activities.length > 1;
+    return isValidExceptLastRow && currentActivities.length > 1;
   };
 
-  // Funkcja generująca dane
   const handleGenerate = () => {
-    const activitiesWithoutLastRow = activities.slice(0, activities.length - 1);
+    const activitiesWithoutLastRow = currentActivities.slice(0, currentActivities.length - 1);
     console.log("Generowanie wykresu:", { activities: activitiesWithoutLastRow, isAoN });
   };
 
   useEffect(() => {
-    const lastActivity = activities[activities.length - 1];
-    // Dodanie nowego wiersza, jeśli poprzedni wiersz jest pełny
+    const lastActivity = currentActivities[currentActivities.length - 1];
     if (isRowValid(lastActivity)) {
       addRowIfNeeded();
     }
 
-    // Sprawdzamy, czy formularz jest gotowy do generowania
     const formIsValid = isFormReady();
     setIsFormValid(formIsValid);
-    // Wyświetlamy komunikat o błędach tylko jeśli formularz zawiera więcej niż jeden wiersz
-    if (activities.length > 1) {
+    
+    if (currentActivities.length > 1) {
       setFormError(formIsValid ? "" : "Formularz zawiera błędne dane.");
     } else {
       setFormError("");
     }
-  }, [activities]);
+  }, [currentActivities]);
 
   return (
     <div className="mx-auto max-w-lg p-4">
@@ -154,16 +157,20 @@ const CPMForm: React.FC = () => {
 
       <Card>
         <CardContent className="space-y-2 p-4">
-          {activities.map((activity) => (
+          {currentActivities.map((activity) => (
             <div key={activity.id} className="flex items-center gap-2">
               <Input
                 type="text"
-                placeholder="Czynność (np. A)"
+                placeholder={isAoN ? "Czynność (np. A)" : "Zdarzenie (np. 1)"}
                 value={activity.name}
-                maxLength={1}
-                className={`uppercase ${activity.name.trim() === "" || isNameDuplicate(activity.name, activity.id) ? "border-red-500" : ""}`}
+                maxLength={isAoN ? 1 : undefined}
+                className={`${isAoN ? "uppercase" : ""} ${
+                  activity.name.trim() === "" || isNameDuplicate(activity.name, activity.id) 
+                    ? "border-red-500" 
+                    : ""
+                }`}
                 onChange={(e) => {
-                  const newValue = e.target.value.toUpperCase();
+                  const newValue = isAoN ? e.target.value.toUpperCase() : e.target.value;
                   handleChange(activity.id, "name", newValue);
                   removeRowIfEmpty();
                 }}
@@ -181,14 +188,19 @@ const CPMForm: React.FC = () => {
               />
               <Input
                 type="text"
-                placeholder="Następstwo (np. 1-2)"
+                placeholder={isAoN ? "Następstwo (np. 1-2)" : "Poprzednik (np. 1)"}
                 value={activity.dependency}
-                className={`${activity.dependency.trim() === "" || dependencyErrors.get(activity.id) ? "border-red-500" : ""}`}
+                className={`${
+                  activity.dependency.trim() === "" || 
+                  (dependencyErrors.get(activity.id) ||
+                  (isAoN && isDependencyDuplicate(activity.dependency, activity.id))
+                    ? "border-red-500" 
+                    : ""
+          )}`}
                 onChange={(e) =>
                   handleDependencyChange(activity.id, e.target.value)
                 }
                 onKeyDown={(e) => {
-                  // Allow Backspace to clear the input, so it's empty if needed
                   if (e.key === "Backspace" && activity.dependency === "") {
                     handleChange(activity.id, "dependency", "");
                   }
@@ -199,13 +211,11 @@ const CPMForm: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Wyświetlanie komunikatu o błędach, tylko jeśli formularz ma więcej niż jeden wiersz */}
-      {formError && activities.length > 1 && (
+      {formError && currentActivities.length > 1 && (
         <div className="mt-2 text-center text-red-500">{formError}</div>
       )}
 
-      {/* Przycisk Generuj */}
-      {isFormValid && activities.length > 1 && (
+      {isFormValid && currentActivities.length > 1 && (
         <div className="mt-4 text-center">
           <Button onClick={handleGenerate}>Generuj</Button>
         </div>
