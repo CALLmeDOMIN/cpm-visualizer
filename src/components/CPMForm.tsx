@@ -37,7 +37,7 @@ const formSchema = z.object({
   actions: z.array(actionSchema),
 });
 
-export const NewCPMForm = () => {
+export const CPMForm = () => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {

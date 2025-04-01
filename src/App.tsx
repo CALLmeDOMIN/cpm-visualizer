@@ -5,7 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { NewCPMForm } from "./components/CPMForm";
+import { CPMForm } from "./components/CPMForm";
 
 function App() {
   return (
@@ -16,7 +16,7 @@ function App() {
           <CardDescription>Activity on action</CardDescription>
         </CardHeader>
         <CardContent>
-          <NewCPMForm />
+          <CPMForm />
         </CardContent>
       </Card>
     </div>
