@@ -15,6 +15,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { calculateCriticalPath } from "@/lib/CPM/cpm";
+import { type Action } from "@/lib/CPM/cpm.types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Trash } from "lucide-react";
 import { useFieldArray, useForm } from "react-hook-form";
@@ -22,7 +24,7 @@ import { z } from "zod";
 
 const actionSchema = z.object({
   name: z.string().min(1, "Nazwa jest wymagana"),
-  duration: z.number(),
+  duration: z.coerce.number(),
   dependency: z
     .string()
     .regex(/^(\d+-\d+)(,\s*\d+-\d+)*$|^$/, "Format: 1-2, 2-3, ..."),
@@ -106,7 +108,27 @@ export const CPMForm = () => {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+    const actions: Action[] = values.actions.map((action) => {
+      const dependencies = action.dependency
+        ? action.dependency
+            .split(",")
+            .map((dep) => dep.trim())
+            .filter(Boolean)
+        : [];
+
+      return {
+        name: action.name,
+        duration: Number(action.duration),
+        dependencies,
+      };
+    });
+
+    console.log("Actions:", actions);
+
+    const result = calculateCriticalPath(actions);
+
+    console.log("Critical path:", result.criticalPath);
+    console.log("Total duration:", result.totalDuration);
   }
 
   return (
