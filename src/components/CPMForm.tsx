@@ -25,9 +25,8 @@ const actionSchema = z.object({
   duration: z.number(),
   dependency: z
     .string()
-    .regex(/^(\d+-\d+)(,\s*\d+-\d+)*$|^$/, "Format: 1-2, 2-3, ..."),
-  // .optional() // for AoN
-  // .or(z.literal("")),
+    .min(1, "Zależność jest wymagana")
+    .regex(/^\d+-\d+$/, "Format: 1-2"),
 });
 
 const formSchema = z.object({
@@ -153,6 +152,7 @@ export const CPMForm = () => {
                             type="number"
                             min="1"
                             {...field}
+                            placeholder="1"
                             className="w-full"
                           />
                         </FormControl>
@@ -170,7 +170,7 @@ export const CPMForm = () => {
                         <FormControl>
                           <Input
                             {...field}
-                            placeholder="1-2, 2-3, ..."
+                            placeholder="1-2"
                             className="w-full"
                           />
                         </FormControl>
