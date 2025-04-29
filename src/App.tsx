@@ -13,7 +13,7 @@ function App() {
       <Card className="mx-auto max-w-2xl">
         <CardHeader>
           <CardTitle>CPM - Wprowadź czynności</CardTitle>
-          <CardDescription>Activity on action</CardDescription>
+          <CardDescription>Activity on arrow</CardDescription>
         </CardHeader>
         <CardContent>
           <CPMForm />
