@@ -1,4 +1,10 @@
-import type { CriticalPathResult, Action, AoANode, AoAEdge } from "./cpm.types";
+import type {
+  Action,
+  AoAEdge,
+  AoANode,
+  CriticalPathResult,
+  GraphAoA,
+} from "./cpm.types";
 
 export const calculateCriticalPath = (
   actions: Action[],
@@ -41,7 +47,7 @@ const calculateCriticalPathAoA = (actions: Action[]): CriticalPathResult => {
   };
 };
 
-const buildGraph = (actions: Action[]) => {
+const buildGraph = (actions: Action[]): GraphAoA => {
   const nodes = new Map<string, AoANode>();
   const edges: AoAEdge[] = [];
 

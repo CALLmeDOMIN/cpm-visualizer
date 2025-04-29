@@ -4,6 +4,11 @@ export type Action = {
   dependencies: string[];
 };
 
+export type GraphAoA = {
+  nodes: AoANode[];
+  edges: AoAEdge[];
+};
+
 export type AoANode = {
   name: string;
   eventTime: number;

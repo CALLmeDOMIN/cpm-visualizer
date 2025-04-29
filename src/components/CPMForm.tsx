@@ -127,8 +127,7 @@ export const CPMForm = () => {
 
     const result = calculateCriticalPath(actions);
 
-    console.log("Critical path:", result.criticalPath);
-    console.log("Total duration:", result.totalDuration);
+    console.log(result);
   }
 
   return (
