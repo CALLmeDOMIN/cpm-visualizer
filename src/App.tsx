@@ -1,3 +1,4 @@
+import { CPMForm } from "@/components/CPMForm";
 import {
   Card,
   CardContent,
@@ -5,17 +6,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { CPMForm } from "./components/CPMForm";
-import { ReactFlow } from "@xyflow/react";
+import Visualization from "@/components/Visualization";
+import type { Action } from "@/lib/CPM/cpm.types";
 
-import "@xyflow/react/dist/style.css";
+import { useState } from "react";
 
 function App() {
-  const initialNodes = [
-    { id: "1", position: { x: 0, y: 0 }, data: { label: "1" } },
-    { id: "2", position: { x: 0, y: 100 }, data: { label: "2" } },
-  ];
-  const initialEdges = [{ id: "e1-2", source: "1", target: "2" }];
+  const [actions, setActions] = useState<Action[]>([]);
 
   return (
     <>
@@ -24,19 +21,20 @@ function App() {
       </div>
       <div className="dark hidden min-h-screen gap-2 bg-stone-950 p-2 xl:flex">
         <div className="flex h-[calc(100vh_-_1rem)] w-2/5 items-center rounded-md px-2">
-          <Card className="">
+          <Card>
             <CardHeader>
               <CardTitle>CPM - Wprowadź czynności</CardTitle>
               <CardDescription>Activity on arrow</CardDescription>
             </CardHeader>
             <CardContent>
-              <CPMForm />
+              <CPMForm setActions={setActions} />
             </CardContent>
           </Card>
         </div>
-        <div className="h-[calc(100vh_-_1rem)] w-3/5 rounded-md bg-red-300">
-          <ReactFlow nodes={initialNodes} edges={initialEdges} />
-        </div>
+        <Visualization
+          actions={actions}
+          className="h-[calc(100vh_-_1rem)] w-3/5"
+        />
       </div>
     </>
   );

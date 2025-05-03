@@ -13,6 +13,11 @@ export type AoANode = {
   name: string;
   eventTime: number;
   latestTime: number;
+  earlyStart?: number;
+  earlyFinish?: number;
+  lateStart?: number;
+  lateFinish?: number;
+  slack?: number;
 };
 
 export type AoAEdge = {
@@ -20,7 +25,8 @@ export type AoAEdge = {
   to: string;
   name: string;
   duration: number;
-  slack: number;
+  slack?: number;
+  isCritical?: boolean;
 };
 
 export type CriticalPathResult = {

@@ -1,10 +1,9 @@
-import { Button } from "./ui/button";
-import { calculateCriticalPath } from "@/lib/CPM/cpm";
-import { type Action } from "@/lib/CPM/cpm.types";
+import type { Action } from "@/lib/CPM/cpm.types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Trash } from "lucide-react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
+import { Button } from "./ui/button";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "./ui/form";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
@@ -82,7 +81,11 @@ const formSchema = z.object({
   }),
 });
 
-export const CPMForm = () => {
+export const CPMForm = ({
+  setActions,
+}: {
+  setActions: (actions: Action[]) => void;
+}) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -111,11 +114,7 @@ export const CPMForm = () => {
       };
     });
 
-    console.log("Actions:", actions);
-
-    const result = calculateCriticalPath(actions);
-
-    console.log(result);
+    setActions(actions);
   }
 
   return (
