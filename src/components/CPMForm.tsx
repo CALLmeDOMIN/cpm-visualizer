@@ -1,12 +1,12 @@
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import type { Action } from "@/lib/CPM/cpm.types";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Trash } from "lucide-react";
+import { useFieldArray, useForm } from "react-hook-form";
+import { z } from "zod";
+import { Button } from "./ui/button";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "./ui/form";
+import { Input } from "./ui/input";
+import { ScrollArea } from "./ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -14,13 +14,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { calculateCriticalPath } from "@/lib/CPM/cpm";
-import { type Action } from "@/lib/CPM/cpm.types";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Trash } from "lucide-react";
-import { useFieldArray, useForm } from "react-hook-form";
-import { z } from "zod";
+} from "./ui/table";
 
 const actionSchema = z.object({
   name: z.string().min(1, "Nazwa jest wymagana"),
@@ -87,17 +81,15 @@ const formSchema = z.object({
   }),
 });
 
-export const CPMForm = () => {
+export const CPMForm = ({
+  setActions,
+}: {
+  setActions: (actions: Action[]) => void;
+}) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      actions: [
-        {
-          name: "",
-          duration: 1,
-          dependency: "",
-        },
-      ],
+      actions: [{}],
     },
   });
 
@@ -122,98 +114,96 @@ export const CPMForm = () => {
       };
     });
 
-    console.log("Actions:", actions);
-
-    const result = calculateCriticalPath(actions);
-
-    console.log(result);
+    setActions(actions);
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Czynność</TableHead>
-              <TableHead>Czas trwania, dni</TableHead>
-              <TableHead>Następstwo zdarzeń</TableHead>
-              <TableHead className="w-10" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {fields.map((field, index) => (
-              <TableRow key={field.id}>
-                <TableCell>
-                  <FormField
-                    control={form.control}
-                    name={`actions.${index}.name`}
-                    render={({ field }) => (
-                      <FormItem className="space-y-0">
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="A, B, C..."
-                            className="w-full"
-                          />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
-                </TableCell>
-                <TableCell>
-                  <FormField
-                    control={form.control}
-                    name={`actions.${index}.duration`}
-                    render={({ field }) => (
-                      <FormItem className="space-y-0">
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min="1"
-                            {...field}
-                            placeholder="1"
-                            className="w-full"
-                          />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
-                </TableCell>
-                <TableCell>
-                  <FormField
-                    control={form.control}
-                    name={`actions.${index}.dependency`}
-                    render={({ field }) => (
-                      <FormItem className="space-y-0">
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="1-2"
-                            className="w-full"
-                          />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => remove(index)}
-                    className="cursor-pointer"
-                  >
-                    <Trash />
-                  </Button>
-                </TableCell>
+        <ScrollArea className="h-[70vh] rounded-md">
+          <Table>
+            <TableHeader className="bg-card sticky top-0 rounded-t-md">
+              <TableRow>
+                <TableHead>Czynność</TableHead>
+                <TableHead>Czas trwania, dni</TableHead>
+                <TableHead>Następstwo zdarzeń</TableHead>
+                <TableHead className="w-10" />
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {fields.map((field, index) => (
+                <TableRow key={field.id}>
+                  <TableCell>
+                    <FormField
+                      control={form.control}
+                      name={`actions.${index}.name`}
+                      render={({ field }) => (
+                        <FormItem className="space-y-0">
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="A, B, C..."
+                              className="w-full"
+                            />
+                          </FormControl>
+                          <FormMessage className="text-xs" />
+                        </FormItem>
+                      )}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <FormField
+                      control={form.control}
+                      name={`actions.${index}.duration`}
+                      render={({ field }) => (
+                        <FormItem className="space-y-0">
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="1"
+                              {...field}
+                              placeholder="1"
+                              className="w-full"
+                            />
+                          </FormControl>
+                          <FormMessage className="text-xs" />
+                        </FormItem>
+                      )}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <FormField
+                      control={form.control}
+                      name={`actions.${index}.dependency`}
+                      render={({ field }) => (
+                        <FormItem className="space-y-0">
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="1-2"
+                              className="w-full"
+                            />
+                          </FormControl>
+                          <FormMessage className="text-xs" />
+                        </FormItem>
+                      )}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => remove(index)}
+                      className="cursor-pointer"
+                    >
+                      <Trash />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </ScrollArea>
         <div className="flex justify-end gap-2">
           <Button
             variant="secondary"

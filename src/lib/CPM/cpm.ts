@@ -8,15 +8,36 @@ import type {
 
 export const calculateCriticalPath = (
   actions: Action[],
-): CriticalPathResult => {
+): { result: CriticalPathResult; graph: GraphAoA | null } => {
   const isNodeBasedDependencies = actions.some((action) =>
     action.dependencies.some((dep) => dep.includes("-")),
   );
 
   if (isNodeBasedDependencies) {
-    return calculateCriticalPathAoA(actions);
+    const graph = buildGraph(actions);
+    forwardPass(graph.nodes, graph.edges);
+    backwardPass(graph.nodes, graph.edges);
+    calculateSlack(graph.nodes);
+    calculateEdgeSlack(graph.edges, graph.nodes);
+
+    const criticalPath = identifyCriticalPath(graph.edges, graph.nodes);
+    const lastNode = graph.nodes.reduce(
+      (max, node) => (node.eventTime > max.eventTime ? node : max),
+      graph.nodes[0],
+    );
+
+    return {
+      result: {
+        criticalPath,
+        totalDuration: lastNode.eventTime,
+      },
+      graph,
+    };
   } else {
-    return calculateCriticalPathAoN(actions);
+    return {
+      result: calculateCriticalPathAoN(actions),
+      graph: null,
+    };
   }
 };
 
@@ -26,25 +47,6 @@ const calculateCriticalPathAoN = (actions: Action[]): CriticalPathResult => {
     criticalPath: [],
     totalDuration: 0,
   }; // Placeholder for AoN calculation
-};
-
-const calculateCriticalPathAoA = (actions: Action[]): CriticalPathResult => {
-  const { nodes, edges } = buildGraph(actions);
-
-  forwardPass(nodes, edges);
-  backwardPass(nodes, edges);
-
-  const criticalPath = identifyCriticalPath(edges);
-
-  const lastNode = nodes.reduce(
-    (max, node) => (node.eventTime > max.eventTime ? node : max),
-    nodes[0],
-  );
-
-  return {
-    criticalPath,
-    totalDuration: lastNode.eventTime,
-  };
 };
 
 const buildGraph = (actions: Action[]): GraphAoA => {
@@ -60,6 +62,11 @@ const buildGraph = (actions: Action[]): GraphAoA => {
           name: fromNode,
           eventTime: 0,
           latestTime: Infinity,
+          earlyStart: 0,
+          earlyFinish: 0,
+          lateStart: 0,
+          lateFinish: 0,
+          slack: 0,
         });
       }
 
@@ -68,6 +75,11 @@ const buildGraph = (actions: Action[]): GraphAoA => {
           name: toNode,
           eventTime: 0,
           latestTime: Infinity,
+          earlyStart: 0,
+          earlyFinish: 0,
+          lateStart: 0,
+          lateFinish: 0,
+          slack: 0,
         });
       }
 
@@ -76,7 +88,6 @@ const buildGraph = (actions: Action[]): GraphAoA => {
         to: toNode,
         name: action.name,
         duration: action.duration,
-        slack: 0,
       });
     });
   });
@@ -87,6 +98,8 @@ const buildGraph = (actions: Action[]): GraphAoA => {
 const forwardPass = (nodes: AoANode[], edges: AoAEdge[]) => {
   nodes.forEach((node) => {
     node.eventTime = 0;
+    node.earlyStart = 0;
+    node.earlyFinish = 0;
   });
 
   let changed = true;
@@ -100,6 +113,8 @@ const forwardPass = (nodes: AoANode[], edges: AoAEdge[]) => {
         const newEventTime = fromNode.eventTime + edge.duration;
         if (newEventTime > toNode.eventTime) {
           toNode.eventTime = newEventTime;
+          toNode.earlyStart = newEventTime - edge.duration;
+          toNode.earlyFinish = newEventTime;
           changed = true;
         }
       }
@@ -112,12 +127,15 @@ const backwardPass = (nodes: AoANode[], edges: AoAEdge[]) => {
 
   nodes.forEach((node) => {
     node.latestTime = projectDuration;
+    node.lateStart = projectDuration;
+    node.lateFinish = projectDuration;
   });
 
   let changed = true;
   while (changed) {
     changed = false;
-    edges.forEach((edge) => {
+    for (let i = edges.length - 1; i >= 0; i--) {
+      const edge = edges[i];
       const fromNode = nodes.find((n) => n.name === edge.from);
       const toNode = nodes.find((n) => n.name === edge.to);
 
@@ -125,24 +143,74 @@ const backwardPass = (nodes: AoANode[], edges: AoAEdge[]) => {
         const newLatestTime = toNode.latestTime - edge.duration;
         if (newLatestTime < fromNode.latestTime) {
           fromNode.latestTime = newLatestTime;
+          fromNode.lateFinish = toNode.latestTime;
+          fromNode.lateStart = fromNode.lateFinish - edge.duration;
           changed = true;
         }
       }
-    });
+    }
   }
+};
 
+const calculateSlack = (nodes: AoANode[]) => {
+  nodes.forEach((node) => {
+    node.slack = (node.latestTime || 0) - (node.eventTime || 0);
+  });
+};
+
+const calculateEdgeSlack = (edges: AoAEdge[], nodes: AoANode[]) => {
   edges.forEach((edge) => {
     const fromNode = nodes.find((n) => n.name === edge.from);
     const toNode = nodes.find((n) => n.name === edge.to);
 
     if (fromNode && toNode) {
-      edge.slack = toNode.latestTime - fromNode.eventTime - edge.duration;
+      const latestStartPossible = toNode.latestTime - edge.duration;
+      const earliestStartPossible = fromNode.eventTime;
+      edge.slack = latestStartPossible - earliestStartPossible;
+
+      edge.isCritical = edge.slack === 0 && edge.duration > 0;
     }
   });
 };
 
-const identifyCriticalPath = (edges: AoAEdge[]) => {
-  return edges
-    .filter((edge) => edge.slack === 0 && edge.duration > 0)
-    .map((edge) => edge.name);
+const identifyCriticalPath = (edges: AoAEdge[], nodes: AoANode[]): string[] => {
+  edges.forEach((edge) => {
+    edge.isCritical = false;
+  });
+
+  const criticalEdges = edges.filter((edge) => {
+    const fromNode = nodes.find((n) => n.name === edge.from);
+    const toNode = nodes.find((n) => n.name === edge.to);
+
+    if (!fromNode || !toNode) return false;
+
+    const isZeroSlack =
+      fromNode.eventTime + edge.duration === toNode.eventTime &&
+      edge.slack === 0;
+
+    if (isZeroSlack) {
+      edge.isCritical = true;
+    }
+
+    return isZeroSlack;
+  });
+
+  const startNode = nodes.find((n) => n.eventTime === 0)?.name || "";
+  const endNode = nodes.reduce(
+    (max, node) => (node.eventTime > max.eventTime ? node : max),
+    nodes[0],
+  ).name;
+
+  const criticalActivities: string[] = [];
+  let currentNode = startNode;
+
+  while (currentNode !== endNode) {
+    const nextEdge = criticalEdges.find((edge) => edge.from === currentNode);
+    if (!nextEdge) break;
+
+    criticalActivities.push(nextEdge.name);
+    currentNode = nextEdge.to;
+  }
+
+  return criticalActivities;
 };
