@@ -6,13 +6,28 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import Visualization from "@/components/Visualization";
+import Visualization from "@/components/Visualization/Visualization";
 import type { Action } from "@/lib/CPM/cpm.types";
 
 import { useState } from "react";
+import { Button } from "./components/ui/button";
 
 function App() {
   const [actions, setActions] = useState<Action[]>([]);
+  const [graphType, setGraphType] = useState<"AoA" | "AoN">("AoA");
+  const [isChangingType, setIsChangingType] = useState(false);
+
+  const handleGraphTypeChange = (type: "AoA" | "AoN") => {
+    if (graphType !== type) {
+      setIsChangingType(true);
+      setActions([]);
+
+      setTimeout(() => {
+        setGraphType(type);
+        setIsChangingType(false);
+      }, 100);
+    }
+  };
 
   return (
     <>
@@ -24,17 +39,46 @@ function App() {
           <Card>
             <CardHeader>
               <CardTitle>CPM - Wprowadź czynności</CardTitle>
-              <CardDescription>Activity on arrow</CardDescription>
+              <CardDescription>
+                <div className="flex items-center justify-between">
+                  <span>Critical Path Method</span>
+                  <div className="flex gap-2 rounded-md border p-1">
+                    <Button
+                      variant={graphType === "AoA" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleGraphTypeChange("AoA")}
+                      disabled={isChangingType}
+                    >
+                      Activity on Arrow
+                    </Button>
+                    <Button
+                      variant={graphType === "AoN" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleGraphTypeChange("AoN")}
+                      disabled={isChangingType}
+                    >
+                      Activity on Node
+                    </Button>
+                  </div>
+                </div>
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <CPMForm setActions={setActions} />
+              <CPMForm setActions={setActions} graphType={graphType} />
             </CardContent>
           </Card>
         </div>
-        <Visualization
-          actions={actions}
-          className="h-[calc(100vh_-_1rem)] w-3/5"
-        />
+        {isChangingType ? (
+          <div className="flex h-[calc(100vh_-_1rem)] w-3/5 items-center justify-center">
+            <p className="text-lg">Changing graph type...</p>
+          </div>
+        ) : (
+          <Visualization
+            actions={actions}
+            graphType={graphType}
+            className="h-[calc(100vh_-_1rem)] w-3/5"
+          />
+        )}
       </div>
     </>
   );

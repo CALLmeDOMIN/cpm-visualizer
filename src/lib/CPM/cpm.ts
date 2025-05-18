@@ -2,51 +2,173 @@ import type {
   Action,
   AoAEdge,
   AoANode,
+  AoNActivity,
   CriticalPathResult,
   GraphAoA,
+  GraphAoN,
 } from "./cpm.types";
 
 export const calculateCriticalPath = (
   actions: Action[],
-): { result: CriticalPathResult; graph: GraphAoA | null } => {
-  const isNodeBasedDependencies = actions.some((action) =>
-    action.dependencies.some((dep) => dep.includes("-")),
-  );
-
-  if (isNodeBasedDependencies) {
-    const graph = buildGraph(actions);
-    forwardPass(graph.nodes, graph.edges);
-    backwardPass(graph.nodes, graph.edges);
-    calculateSlack(graph.nodes);
-    calculateEdgeSlack(graph.edges, graph.nodes);
-
-    const criticalPath = identifyCriticalPath(graph.edges, graph.nodes);
-    const lastNode = graph.nodes.reduce(
-      (max, node) => (node.eventTime > max.eventTime ? node : max),
-      graph.nodes[0],
+  graphType: "AoA" | "AoN" = "AoA",
+): { result: CriticalPathResult; graph: GraphAoA | GraphAoN | null } => {
+  if (graphType === "AoA") {
+    const isNodeBasedDependencies = actions.some((action) =>
+      action.dependencies.some((dep) => dep.includes("-")),
     );
 
-    return {
-      result: {
-        criticalPath,
-        totalDuration: lastNode.eventTime,
-      },
-      graph,
-    };
+    if (isNodeBasedDependencies) {
+      const graph = buildGraph(actions);
+      forwardPass(graph.nodes, graph.edges);
+      backwardPass(graph.nodes, graph.edges);
+      calculateSlack(graph.nodes);
+      calculateEdgeSlack(graph.edges, graph.nodes);
+
+      const criticalPath = identifyCriticalPath(graph.edges, graph.nodes);
+      const lastNode = graph.nodes.reduce(
+        (max, node) => (node.eventTime > max.eventTime ? node : max),
+        graph.nodes[0],
+      );
+
+      return {
+        result: {
+          criticalPath,
+          totalDuration: lastNode.eventTime,
+        },
+        graph,
+      };
+    } else {
+      return {
+        result: {
+          criticalPath: [],
+          totalDuration: 0,
+        },
+        graph: null,
+      };
+    }
   } else {
-    return {
-      result: calculateCriticalPathAoN(actions),
-      graph: null,
-    };
+    return calculateCriticalPathAoN(actions);
   }
 };
 
-const calculateCriticalPathAoN = (actions: Action[]): CriticalPathResult => {
-  console.log(actions);
+const calculateCriticalPathAoN = (
+  actions: Action[],
+): { result: CriticalPathResult; graph: GraphAoN } => {
+  const graph = buildAoNGraph(actions);
+
+  calculateEarlyTimes(graph.activities);
+  calculateLateTimes(graph.activities);
+
+  const criticalPath = identifyCriticalPathAoN(graph.activities);
+
+  const projectDuration = Math.max(
+    ...graph.activities.map((a) => a.earlyFinish),
+  );
+
   return {
-    criticalPath: [],
-    totalDuration: 0,
-  }; // Placeholder for AoN calculation
+    result: {
+      criticalPath: criticalPath.map((a) => a.name),
+      totalDuration: projectDuration,
+    },
+    graph,
+  };
+};
+
+const buildAoNGraph = (actions: Action[]): GraphAoN => {
+  const activities: AoNActivity[] = actions.map((action) => ({
+    name: action.name,
+    duration: action.duration,
+    dependencies: action.dependencies,
+    earlyStart: 0,
+    earlyFinish: 0,
+    lateStart: 0,
+    lateFinish: 0,
+    slack: 0,
+    isCritical: false,
+  }));
+
+  return { activities };
+};
+
+const calculateEarlyTimes = (activities: AoNActivity[]) => {
+  activities.forEach((activity) => {
+    activity.earlyStart = 0;
+    activity.earlyFinish = activity.duration;
+  });
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+
+    activities.forEach((activity) => {
+      if (activity.dependencies.length > 0) {
+        const maxPredecessorFinish = Math.max(
+          ...activity.dependencies.map((dep) => {
+            const predecessor = activities.find((a) => a.name === dep);
+            return predecessor ? predecessor.earlyFinish : 0;
+          }),
+        );
+
+        if (maxPredecessorFinish > activity.earlyStart) {
+          activity.earlyStart = maxPredecessorFinish;
+          activity.earlyFinish = maxPredecessorFinish + activity.duration;
+          changed = true;
+        }
+      }
+    });
+  }
+};
+
+const calculateLateTimes = (activities: AoNActivity[]) => {
+  const projectEnd = Math.max(...activities.map((a) => a.earlyFinish));
+
+  activities.forEach((activity) => {
+    activity.lateFinish = projectEnd;
+    activity.lateStart = activity.lateFinish - activity.duration;
+  });
+
+  const endActivities = activities.filter(
+    (a) => !activities.some((act) => act.dependencies.includes(a.name)),
+  );
+
+  endActivities.forEach((activity) => {
+    activity.lateFinish = projectEnd;
+    activity.lateStart = activity.lateFinish - activity.duration;
+  });
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+
+    for (let i = activities.length - 1; i >= 0; i--) {
+      const activity = activities[i];
+
+      const successors = activities.filter((a) =>
+        a.dependencies.includes(activity.name),
+      );
+
+      if (successors.length > 0) {
+        const minSuccessorStart = Math.min(
+          ...successors.map((s) => s.lateStart),
+        );
+
+        if (minSuccessorStart < activity.lateFinish) {
+          activity.lateFinish = minSuccessorStart;
+          activity.lateStart = activity.lateFinish - activity.duration;
+          changed = true;
+        }
+      }
+    }
+  }
+
+  activities.forEach((activity) => {
+    activity.slack = activity.lateStart - activity.earlyStart;
+    activity.isCritical = activity.slack === 0;
+  });
+};
+
+const identifyCriticalPathAoN = (activities: AoNActivity[]): AoNActivity[] => {
+  return activities.filter((activity) => activity.isCritical);
 };
 
 const buildGraph = (actions: Action[]): GraphAoA => {
