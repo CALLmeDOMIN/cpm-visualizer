@@ -17,6 +17,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useRef, useState } from "react";
+import LegendDialog from "./Legend/LegendDialog";
 import { Card, CardContent } from "./ui/card";
 
 const mapToReactFlow = (graph: GraphAoA): { nodes: Node[]; edges: Edge[] } => {
@@ -164,6 +165,7 @@ export default function Visualization({
         />
       )}
       <ReactFlow nodes={nodes} edges={edges} onInit={onInit} fitView={false} />
+      <LegendDialog />
     </div>
   );
 }
