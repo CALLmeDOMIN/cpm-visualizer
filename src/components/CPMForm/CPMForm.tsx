@@ -2,11 +2,17 @@ import type { Action } from "@/lib/CPM/cpm.types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Trash } from "lucide-react";
 import { useFieldArray, useForm } from "react-hook-form";
-import { z } from "zod";
-import { Button } from "./ui/button";
-import { Form, FormControl, FormField, FormItem, FormMessage } from "./ui/form";
-import { Input } from "./ui/input";
-import { ScrollArea } from "./ui/scroll-area";
+import ReadFromFile from "../ReadFromFile/ReadFromFile";
+import { Button } from "../ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormMessage,
+} from "../ui/form";
+import { Input } from "../ui/input";
+import { ScrollArea } from "../ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -14,80 +20,16 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "./ui/table";
-
-const actionSchema = z.object({
-  name: z.string().min(1, "Nazwa jest wymagana"),
-  duration: z.coerce.number(),
-  dependency: z
-    .string()
-    .min(1, "Zależność jest wymagana")
-    .regex(/^\d+-\d+$/, "Format: 1-2"),
-});
-
-const formSchema = z.object({
-  actions: z.array(actionSchema).superRefine((actions, ctx) => {
-    const nameMap = new Map();
-    actions.forEach((action, index) => {
-      if (action.name && nameMap.has(action.name)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Nazwa musi być unikalna",
-          path: [`${index}.name`],
-        });
-      } else {
-        nameMap.set(action.name, true);
-      }
-    });
-
-    const dependencyPaths = new Set();
-
-    actions.forEach((action, index) => {
-      if (!action.dependency) return;
-
-      const dependencies = action.dependency
-        .split(",")
-        .map((dep) => dep.trim());
-
-      dependencies.forEach((dep) => {
-        if (!dep) return;
-
-        const match = dep.match(/^(\d+)-(\d+)$/);
-        if (!match) return;
-
-        const [, start, end] = match;
-        const path = `${start}-${end}`;
-        const reversePath = `${end}-${start}`;
-
-        if (dependencyPaths.has(path)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `Ścieżka ${path} jest już używana`,
-            path: [`${index}.dependency`],
-          });
-        }
-
-        if (dependencyPaths.has(reversePath)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `Ścieżka ${path} jest sprzeczna z istniejącą ścieżką ${reversePath}`,
-            path: [`${index}.dependency`],
-          });
-        }
-
-        dependencyPaths.add(path);
-      });
-    });
-  }),
-});
+} from "../ui/table";
+import { cpmFormSchema, FormSchema, onFileUpload } from "./CPMForm.utils";
 
 export const CPMForm = ({
   setActions,
 }: {
   setActions: (actions: Action[]) => void;
 }) => {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<FormSchema>({
+    resolver: zodResolver(cpmFormSchema),
     defaultValues: {
       actions: [{}],
     },
@@ -98,7 +40,7 @@ export const CPMForm = ({
     name: "actions",
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  function onSubmit(values: FormSchema) {
     const actions: Action[] = values.actions.map((action) => {
       const dependencies = action.dependency
         ? action.dependency
@@ -205,6 +147,7 @@ export const CPMForm = ({
           </Table>
         </ScrollArea>
         <div className="flex justify-end gap-2">
+          <ReadFromFile onFileUpload={onFileUpload} />
           <Button
             variant="secondary"
             onClick={() =>

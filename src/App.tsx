@@ -1,4 +1,4 @@
-import { CPMForm } from "@/components/CPMForm";
+import { CPMForm } from "@/components/CPMForm/CPMForm";
 import {
   Card,
   CardContent,
