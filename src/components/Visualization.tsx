@@ -18,7 +18,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import LegendDialog from "./Legend/LegendDialog";
-import { Card, CardContent } from "./ui/card";
+import ResultDisplay from "./ResultDisplay";
 
 const mapToReactFlow = (graph: GraphAoA): { nodes: Node[]; edges: Edge[] } => {
   const reactFlowNodes = graph.nodes.map((node: AoANode) => {
@@ -110,6 +110,7 @@ export default function Visualization({
 }) {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
+  const [graph, setGraph] = useState<GraphAoA | null>(null);
   const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
   const [cpmResult, setCpmResult] = useState<CriticalPathResult>({
     criticalPath: [],
@@ -140,6 +141,8 @@ export default function Visualization({
     setCpmResult(result);
 
     if (graph) {
+      setGraph(graph);
+
       const { nodes: reactFlowNodes, edges: reactFlowEdges } =
         mapToReactFlow(graph);
 
@@ -161,6 +164,7 @@ export default function Visualization({
       {cpmResult.criticalPath.length > 0 && (
         <ResultDisplay
           result={cpmResult}
+          graphData={graph}
           className="absolute top-2 right-2 z-50"
         />
       )}
@@ -169,29 +173,3 @@ export default function Visualization({
     </div>
   );
 }
-
-const ResultDisplay = ({
-  className,
-  result,
-}: {
-  className?: string;
-  result: CriticalPathResult;
-}) => {
-  return (
-    <Card className={`flex flex-col p-0 ${className}`}>
-      <CardContent className="p-4">
-        <h2 className="mb-1 text-lg font-bold">Critical Path Result</h2>
-        <p>Total Duration: {result.totalDuration} days</p>
-        <p>Critical Path:</p>
-        {result.criticalPath.map((path, index) => (
-          <>
-            {path}
-            {index < result.criticalPath.length - 1 && (
-              <span className="text-primary"> &gt; </span>
-            )}
-          </>
-        ))}
-      </CardContent>
-    </Card>
-  );
-};
