@@ -57,12 +57,17 @@ export default function CPMTable({
                 const fromNode = nodes.find((n) => n.name === edge.from);
                 const toNode = nodes.find((n) => n.name === edge.to);
 
-                const earlyStart = fromNode?.earlyStart || 0;
+                if (!fromNode || !toNode) return null;
+
+                const earlyStart = fromNode.eventTime || 0;
                 const earlyFinish = earlyStart + edge.duration;
-                const lateStart = toNode
-                  ? (toNode.lateStart || 0) - edge.duration
-                  : 0;
-                const lateFinish = toNode?.lateFinish || 0;
+                const lateFinish = toNode.latestTime || 0;
+                const lateStart = lateFinish - edge.duration;
+
+                const slack =
+                  edge.slack !== undefined
+                    ? edge.slack
+                    : lateStart - earlyStart;
 
                 return (
                   <TableRow
@@ -77,7 +82,7 @@ export default function CPMTable({
                     <TableCell>{earlyFinish}</TableCell>
                     <TableCell>{lateStart}</TableCell>
                     <TableCell>{lateFinish}</TableCell>
-                    <TableCell>{edge.slack || 0}</TableCell>
+                    <TableCell>{slack}</TableCell>
                     <TableCell>{edge.isCritical ? "Yes" : "No"}</TableCell>
                   </TableRow>
                 );
