@@ -33,3 +33,19 @@ export type CriticalPathResult = {
   criticalPath: string[];
   totalDuration: number;
 };
+
+export type AoNActivity = {
+  name: string;
+  duration: number;
+  dependencies: string[];
+  earlyStart: number;
+  earlyFinish: number;
+  lateStart: number;
+  lateFinish: number;
+  slack: number;
+  isCritical: boolean;
+};
+
+export type GraphAoN = {
+  activities: AoNActivity[];
+};

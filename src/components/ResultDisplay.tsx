@@ -1,15 +1,18 @@
-import { CriticalPathResult, GraphAoA } from "@/lib/CPM/cpm.types";
+import { CriticalPathResult, GraphAoA, GraphAoN } from "@/lib/CPM/cpm.types";
 import { Card, CardContent } from "./ui/card";
 import CPMTable from "./CPMTable";
+import React from "react";
 
 export default function ResultDisplay({
   className,
   result,
   graphData,
+  graphType = "AoA",
 }: {
   className?: string;
   result: CriticalPathResult;
-  graphData: GraphAoA | null;
+  graphData: GraphAoA | GraphAoN | null;
+  graphType: "AoA" | "AoN";
 }) {
   return (
     <Card className={`flex flex-col p-0 ${className}`}>
@@ -19,15 +22,15 @@ export default function ResultDisplay({
         <p>Critical Path:</p>
         <div>
           {result.criticalPath.map((path, index) => (
-            <>
+            <React.Fragment key={path}>
               {path}
               {index < result.criticalPath.length - 1 && (
                 <span className="text-primary"> &gt; </span>
               )}
-            </>
+            </React.Fragment>
           ))}
         </div>
-        <CPMTable cpmData={graphData} />
+        <CPMTable cpmData={graphData} graphType={graphType} />
       </CardContent>
     </Card>
   );
